@@ -6,11 +6,11 @@ Before deploying a PoC, I want to make sure the components can work together.
 
 This is a PoC of that.  A PoC-PoC.
 
-There will be a compose.yaml which launches the following containers:
+This has a docker-compose.yaml which launches:
 
-* Clickhouse
-* OpenTelemetry Collector
-  * set to export logs/traces/metrics to Clickhouse.
-  * TODO: Some setup for getting logs in
-* Grafana, configured with the Clickhouse plugin and Datasource
-
+ - Grafana: http://localhost:3000
+ - ClickHouse: http://localhost:8123
+ - OpenTelemetry Collector:
+   - OTLP gRPC: localhost:4317
+   - OTLP HTTP: localhost:4318
+   - Syslog UDP: localhost:5514

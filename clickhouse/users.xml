@@ -2,7 +2,7 @@
 <clickhouse>
     <users>
         <default>
-            <password></password>
+            <password>default_user_very_bad_password</password>
             <networks>
                 <ip>::/0</ip>
             </networks>

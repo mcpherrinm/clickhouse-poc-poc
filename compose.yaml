@@ -7,8 +7,6 @@ services:
       - "9000:9000"  # Native interface
     environment:
       CLICKHOUSE_DB: otel
-      CLICKHOUSE_USER: default
-      CLICKHOUSE_PASSWORD: ""
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - ./clickhouse/users.xml:/etc/clickhouse-server/users.d/users.xml:ro
