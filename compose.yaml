@@ -24,6 +24,7 @@ services:
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
       - ./otelcol/config.yaml:/etc/otel-collector-config.yaml:ro
+      - ../boulder/test/log:/data
     ports:
       - "4317:4317"   # OTLP gRPC receiver
       - "4318:4318"   # OTLP HTTP receiver

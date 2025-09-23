@@ -8,7 +8,24 @@ receivers:
   syslog:
     udp:
       listen_address: "0.0.0.0:5514"
-    protocol: rfc3164
+    protocol: rfc5424
+  filelog:
+    include:
+      - /data/*.log
+    exclude:
+      - /data/kern.log
+      - /data/rsyslogd.log
+    start_at: beginning
+    operators:
+      - type: regex_parser
+        regex: '^(?P<timestamp>\S+) (?P<hostname>\S+) datacenter (?P<syslogseverity>\d+) (?P<service>[^\[]+)\[(?P<pid>\d+)\]: (?P<checksum>\S+) (?P<msg>.*?)(?:JSON=(?P<json>\{.*\}))?$'
+        timestamp:
+          parse_from: attributes.timestamp
+          layout: '%Y-%m-%dT%H:%M:%S.%fZ'
+      - type: json_parser
+        parse_from: attributes.json
+        parse_to: attributes.json
+        if: 'attributes.json != nil'
 
 processors:
   batch:
@@ -43,7 +60,7 @@ service:
       processors: [batch]
       exporters: [clickhouse, prometheus]
     logs:
-      receivers: [otlp, syslog]
+      receivers: [otlp, syslog, filelog]
       processors: [batch]
       exporters: [clickhouse]
 
