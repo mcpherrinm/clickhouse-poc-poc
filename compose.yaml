@@ -21,7 +21,7 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     container_name: otel-collector
-    command: ["--config=/etc/otel-collector-config.yaml"]
+    command: ["--config=/etc/otel-collector-config.yaml", "--feature-gates=clickhouse.json"]
     volumes:
       - ./otelcol/config.yaml:/etc/otel-collector-config.yaml:ro
       - ../boulder/test/log:/data
