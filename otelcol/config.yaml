@@ -15,17 +15,29 @@ receivers:
     exclude:
       - /data/kern.log
       - /data/rsyslogd.log
-    start_at: beginning
+    start_at: beginning # in the poc-poc, I want to re-parse as I reload
     operators:
       - type: regex_parser
-        regex: '^(?P<timestamp>\S+) (?P<hostname>\S+) datacenter (?P<syslogseverity>\d+) (?P<service>[^\[]+)\[(?P<pid>\d+)\]: (?P<checksum>\S+) (?P<msg>.*?)(?:JSON=(?P<json>\{.*\}))?$'
+        regex: '^(?P<timestamp>\S+) (?P<hostname>\S+) (?P<datacenter>\S+) (?P<syslogseverity>\d+) (?P<service>[^\[]+)\[(?P<pid>\d+)\]: (?P<checksum>\S+) (?P<msg>.*?)$'
         timestamp:
           parse_from: attributes.timestamp
-          layout: '%Y-%m-%dT%H:%M:%S.%fZ'
-      - type: json_parser
-        parse_from: attributes.json
-        parse_to: attributes.json
-        if: 'attributes.json != nil'
+          layout: '%Y-%m-%dT%H:%M:%S.%f%j'
+        severity:
+          parse_from: attributes.syslogseverity
+          preset: none
+          overwrite_text: true
+          mapping: # These values match the mapping in the collector's syslog receiver
+            fatal:  0 # syslog: emerg
+            error3: 1 # syslog: alert
+            error2: 2 # syslog: crit
+            error:  3 # syslog: err
+            warn:   4 # syslog: warning
+            info2:  5 # syslog: notice
+            info:   6 # syslog: info
+            debug:  7 # syslog: debug
+      - type: move
+        from: attributes.msg
+        to: body
 
 processors:
   batch:
