@@ -35,9 +35,19 @@ receivers:
             info2:  5 # syslog: notice
             info:   6 # syslog: info
             debug:  7 # syslog: debug
+      - type: remove
+        field: attributes.timestamp
+      - type: remove
+        field: attributes.syslogseverity
       - type: move
         from: attributes.msg
         to: body
+      - type: move
+        from: attributes.service
+        to: resource["service.name"]
+      - type: move # TODO: Parse integer, per semantic conventions
+        from: attributes.pid
+        to: resource["process.pid"]
 
 processors:
   batch:
