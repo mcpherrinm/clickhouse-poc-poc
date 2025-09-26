@@ -15,8 +15,8 @@ import (
 // and returns the base64URL encoded result (without padding to match ClickHouse)
 func varintEncode(value uint32) string {
 	buf := make([]byte, binary.MaxVarintLen32)
-	n := binary.PutUvarint(buf, uint64(value))
-	encoded := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(buf[:n])
+	binary.PutUvarint(buf, uint64(value))
+	encoded := base64.RawURLEncoding.EncodeToString(buf)
 	return encoded
 }
 
@@ -96,9 +96,7 @@ CREATE OR REPLACE FUNCTION varintEncode AS (input_value) -> (
                 if(bitShiftRight(input_value, 28) > 0, bitAnd(bitShiftRight(input_value, 28), 127), 0),
                 0
             )))))
-        , range(1, 6)) AS varint_bytes_all,
-
-        arrayFilter(x -> x > 0, varint_bytes_all) AS varint_bytes
+        , range(1, 6)) AS varint_bytes
 
     SELECT arrayStringConcat(arrayMap(x -> char(x), varint_bytes))
 )`
