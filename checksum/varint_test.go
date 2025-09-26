@@ -17,6 +17,7 @@ func FuzzVarintEncode(f *testing.F) {
 
 	// Add some seed values to ensure we test known edge cases
 	seedValues := []uint32{
+		0,
 		1,
 		127,
 		128,

@@ -70,35 +70,14 @@ func (c *ClickHouseClient) Close() error {
 func (c *ClickHouseClient) createVarintEncodeFunction() error {
 	createFunctionSQL := `
 CREATE OR REPLACE FUNCTION varintEncode AS (input_value) -> (
-    WITH
-        arrayMap(i ->
-            if(i = 1, -- For the first byte
-                if(input_value >= 128, -- If there's more bytes
-                    bitOr(bitAnd(input_value, 127), 128), -- Include the continuation high bit
-                    input_value
-                ),
-            if(i = 2,
-                if(bitShiftRight(input_value, 7) >= 128,
-                    bitOr(bitAnd(bitShiftRight(input_value, 7), 127), 128),
-                    if(bitShiftRight(input_value, 7) > 0, bitAnd(bitShiftRight(input_value, 7), 127), 0)
-                ),
-            if(i = 3,
-                if(bitShiftRight(input_value, 14) >= 128,
-                    bitOr(bitAnd(bitShiftRight(input_value, 14), 127), 128),
-                    if(bitShiftRight(input_value, 14) > 0, bitAnd(bitShiftRight(input_value, 14), 127), 0)
-                ),
-            if(i = 4,
-                if(bitShiftRight(input_value, 21) >= 128,
-                    bitOr(bitAnd(bitShiftRight(input_value, 21), 127), 128),
-                    if(bitShiftRight(input_value, 21) > 0, bitAnd(bitShiftRight(input_value, 21), 127), 0)
-                ),
-            if(i = 5,
-                if(bitShiftRight(input_value, 28) > 0, bitAnd(bitShiftRight(input_value, 28), 127), 0),
-                0
-            )))))
-        , range(1, 6)) AS varint_bytes
-
-    SELECT arrayStringConcat(arrayMap(x -> char(x), varint_bytes))
+    SELECT 
+        -- Map over the 5 output bytes in
+        arrayStringConcat(arrayMap(x -> char(x), arrayMap(i ->
+            if(bitShiftRight(input_value, 7 * i) > 0x7F, -- If there are more bytes:
+                bitOr(bitAnd(bitShiftRight(input_value, 7 * i), 0x7F), 0x80), -- set the top continuation bit
+                bitAnd(bitShiftRight(input_value, 7 * i), 0x7F) -- otherwise shift out 7 bits
+            )
+        , range(0, 5))))
 )`
 
 	_, err := c.conn.ExecContext(c.ctx, createFunctionSQL)
