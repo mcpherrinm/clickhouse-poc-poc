@@ -9,10 +9,10 @@ SELECT
                 arrayMap(i ->
                     if(i = 1, -- For the first byte
                         if(crc >= 128, -- If there's more bytes
-                            bitOr(bitAnd(crc, 127), 128), -- Include the continuation high bit
+                            bitOr(crc, 128), -- Include the continuation high bit
                             crc
                         ),
-                    if(i = 2,
+                    if(i = 2, -- Subsequent bytes are similar, but shifted by 7
                         if(bitShiftRight(crc, 7) >= 128,
                             bitOr(bitAnd(bitShiftRight(crc, 7), 127), 128),
                             if(bitShiftRight(crc, 7) > 0, bitAnd(bitShiftRight(crc, 7), 127), 0)
