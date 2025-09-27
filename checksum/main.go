@@ -52,12 +52,6 @@ func NewClickHouseClient() (*ClickHouseClient, error) {
 		ctx:  context.Background(),
 	}
 
-	// Create the varintEncode function in ClickHouse
-	if err := client.createVarintEncodeFunction(); err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("failed to create varintEncode function: %w", err)
-	}
-
 	return client, nil
 }
 
@@ -66,28 +60,20 @@ func (c *ClickHouseClient) Close() error {
 	return c.conn.Close()
 }
 
-// createVarintEncodeFunction creates the varintEncode function in ClickHouse
-func (c *ClickHouseClient) createVarintEncodeFunction() error {
-	createFunctionSQL := `
-CREATE OR REPLACE FUNCTION varintEncode AS (input_value) -> (
-    SELECT 
-        -- Map over the 5 output bytes in
-        arrayStringConcat(arrayMap(x -> char(x), arrayMap(i ->
-            if(bitShiftRight(input_value, 7 * i) > 0x7F, -- If there are more bytes:
-                bitOr(bitAnd(bitShiftRight(input_value, 7 * i), 0x7F), 0x80), -- set the top continuation bit
-                bitAnd(bitShiftRight(input_value, 7 * i), 0x7F) -- otherwise shift out 7 bits
-            )
-        , range(0, 5))))
-)`
-
-	_, err := c.conn.ExecContext(c.ctx, createFunctionSQL)
-	return err
-}
+const varintQuery = `
+WITH %d as crc
+SELECT
+    base64URLEncode(arrayStringConcat( -- Map over each output byte and concat together
+          arrayMap(i -> if(bitShiftRight(crc, 7 * i) > 0x7F, -- If there are more bytes:
+               char(bitOr(bitAnd(bitShiftRight(crc, 7 * i), 0x7F), 0x80)), -- set the top continuation bit
+               char(bitAnd(bitShiftRight(crc, 7 * i), 0x7F)) -- otherwise shift out 7 bits
+            ), range(0, 5)))) as computed
+`
 
 // VarintEncode computes varintEncode for a single value using ClickHouse
 func (c *ClickHouseClient) VarintEncode(value uint32) (string, error) {
 	var result string
-	query := fmt.Sprintf("SELECT base64URLEncode(varintEncode(%d))", value)
+	query := fmt.Sprintf(varintQuery, value)
 	err := c.conn.QueryRowContext(c.ctx, query).Scan(&result)
 	if err != nil {
 		return "", fmt.Errorf("failed to query ClickHouse for value %d: %w", value, err)
