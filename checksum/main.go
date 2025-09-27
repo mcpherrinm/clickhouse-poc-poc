@@ -63,11 +63,21 @@ func (c *ClickHouseClient) Close() error {
 const varintQuery = `
 WITH %d as crc
 SELECT
-    base64URLEncode(arrayStringConcat( -- Map over each output byte and concat together
-          arrayMap(i -> if(bitShiftRight(crc, 7 * i) > 0x7F, -- If there are more bytes:
-               char(bitOr(bitAnd(bitShiftRight(crc, 7 * i), 0x7F), 0x80)), -- set the top continuation bit
-               char(bitAnd(bitShiftRight(crc, 7 * i), 0x7F)) -- otherwise shift out 7 bits
-            ), range(0, 5)))) as computed
+        base64URLEncode(arrayStringConcat(
+                -- We map twice:
+                -- First computing the CRC shifted right by increments of 7 bits
+                -- Then over the shifted values, truncating at 7 bits, setting
+                -- the top bit if there are following nonzero bytes.
+                arrayMap(
+                    shifted ->
+                        char(bitOr(
+                                bitAnd(shifted, 0x7F),
+                                if(shifted > 0x7F, 0x80, 0x00)
+                        )),
+                    arrayMap(
+                        i -> bitShiftRight(crc, 7 * i),
+                        range(0, 5)))
+        )) as computed
 `
 
 // VarintEncode computes varintEncode for a single value using ClickHouse
