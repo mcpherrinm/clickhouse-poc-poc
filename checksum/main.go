@@ -6,18 +6,18 @@ import (
 	"fmt"
 	"hash/crc32"
 	"os"
+	"strings"
 )
 
-// varintEncode matches what Boulder does to encode the crc log line checksums
-func varintEncode(value uint32) string {
-	buf := make([]byte, binary.MaxVarintLen32)
-	binary.PutUvarint(buf, uint64(value))
-	encoded := base64.RawURLEncoding.EncodeToString(buf)
-	return encoded
+// LogLineChecksum is the "new" boulder algorithm
+func LogLineChecksum(line string) string {
+	crc := crc32.ChecksumIEEE([]byte(line))
+	buf := make([]byte, crc32.Size)
+	_, _ = binary.Encode(buf, binary.LittleEndian, crc)
+	return base64.RawURLEncoding.EncodeToString(buf)
 }
 
 func main() {
-	value := crc32.ChecksumIEEE([]byte(os.Args[1]))
-	encoded := varintEncode(value)
-	fmt.Printf("%d\t%s\n", value, encoded)
+	args := strings.Join(os.Args[1:], " ")
+	fmt.Printf("%s %s\n", LogLineChecksum(args), args)
 }
